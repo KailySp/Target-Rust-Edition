@@ -1,5 +1,6 @@
 use sdl3::pixels::Color;
 use sdl3::event::Event;
+use sdl3::EventPump;
 use sdl3::keyboard::Keycode;
 use sdl3::surface::Surface;
 use sdl3::render::{FRect, FPoint, Texture, Canvas};
@@ -7,6 +8,20 @@ use sdl3::video::Window;
 use sdl3::mixer::Mixer;
 
 use std::time::Duration;
+
+struct GameEventState 
+{
+    game_stop: bool,
+}
+
+impl GameEventState 
+{
+    fn create() -> Self
+    {
+        Self { game_stop: false }
+    }
+}
+
 
 fn draw (canvas: &mut Canvas<Window>, texture: &Texture, x: f32, y: f32, angle: Option<f64>, src_rect: Option<FRect>)
 {
@@ -23,12 +38,20 @@ fn draw (canvas: &mut Canvas<Window>, texture: &Texture, x: f32, y: f32, angle: 
     }
 }
 
-/*
-fn poll_event()
-{
 
+fn poll_events(event_pump: &mut EventPump,  game_event_state: &mut GameEventState)
+{
+    for event in event_pump.poll_iter() 
+    {
+        match event
+        {
+            Event::Quit {..} => {game_event_state.game_stop = true;}
+            Event::KeyDown{keycode: Some(Keycode::Q), ..} => {game_event_state.game_stop = true;}
+            _ => {}
+        }
+    }
 }
-*/
+
 
 fn main() 
 {
@@ -60,10 +83,15 @@ fn main()
 
     // In game setup
     // ------------------
+    
+    // Events
+    let mut game_event_state = GameEventState::create();
 
+    // Background
     let background = Surface::load_surface("data/images/background.png").unwrap();
     let background = texture_creator.create_texture_from_surface(&background).unwrap();
 
+    // Soundtrack
     let target_song = mixer.load_audio("data/music/TargetSong.wav", true).unwrap();
     soundtrack.set_audio(&target_song).unwrap();
     soundtrack.play().unwrap();
@@ -74,20 +102,18 @@ fn main()
     // ---------------
     while game_running 
     {
+        // Polls Events
+        // --------------------
+        poll_events(&mut event_pump, &mut game_event_state);
+
+
         // Update
         // ---------
+
+        if game_event_state.game_stop {game_running = false};
         
-        // Polls Events 
-        for event in event_pump.poll_iter() 
-        {
-            match event
-            {
-                Event::Quit {..} => {game_running = false;}
-                Event::KeyDown{keycode: Some(Keycode::Q), ..} => {game_running = false;}
-                _ => {}
-            }
-        }
-        
+
+    
 
         // Draw 
         // --------
