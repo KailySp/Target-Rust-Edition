@@ -113,8 +113,6 @@ fn main()
         if game_event_state.game_stop {game_running = false};
         
 
-    
-
         // Draw 
         // --------
         
