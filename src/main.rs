@@ -11,16 +11,19 @@ use crate::ship::ship::Ship;
 mod ship;
 
 use std::time::Duration;
+
+pub static SCREEN_WIDTH: f32 = 1000.0;
+pub static SCREEN_HEIGHT: f32 = 500.0;
+
 struct GameEventState 
 {
-    game_stop: bool,
+    game_stop: bool, ship_fire_on: bool,
 }
-
 impl GameEventState 
 {
     fn create() -> Self
     {
-        Self { game_stop: false }
+        Self { game_stop: false, ship_fire_on: false}
     }
 }
 
@@ -47,6 +50,9 @@ fn poll_events(event_pump: &mut EventPump,  game_event_state: &mut GameEventStat
         {
             Event::Quit {..} => {game_event_state.game_stop = true;}
             Event::KeyDown{keycode: Some(Keycode::Q), ..} => {game_event_state.game_stop = true;}
+
+            Event::KeyDown{keycode: Some(Keycode::Z), ..} => {game_event_state.ship_fire_on = true;}
+            Event::KeyUp{keycode: Some(Keycode::Z), ..} => {game_event_state.ship_fire_on = false;}
             _ => {}
         }
     }
@@ -111,8 +117,12 @@ fn main()
         // Update
         // ---------
 
+        // Main Game
         if game_event_state.game_stop {game_running = false};
-        
+
+        // Ship
+        ship.fire_on = game_event_state.ship_fire_on;
+        ship.update();
 
         // Draw 
         // --------
