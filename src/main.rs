@@ -2,12 +2,13 @@ use sdl3::pixels::Color;
 use sdl3::event::Event;
 use sdl3::EventPump;
 use sdl3::keyboard::Keycode;
-use sdl3::render::{FRect, FPoint, Texture, Canvas};
+use sdl3::render::{FRect, Texture, Canvas};
 use sdl3::video::Window;
 use sdl3::mixer::Mixer;
 use sdl3::image::LoadTexture;
 
 use crate::ship::ship::Ship;
+use crate::ship::ship::RotationDirection;
 mod ship;
 
 use std::time::Duration;
@@ -17,13 +18,13 @@ pub static SCREEN_HEIGHT: f32 = 500.0;
 
 struct GameEventState 
 {
-    game_stop: bool, ship_fire_on: bool,
+    game_stop: bool, ship_fire_on: bool, ship_rotation_direction: RotationDirection
 }
 impl GameEventState 
 {
     fn create() -> Self
     {
-        Self { game_stop: false, ship_fire_on: false}
+        Self { game_stop: false, ship_fire_on: false, ship_rotation_direction: RotationDirection::None}
     }
 }
 
@@ -32,8 +33,7 @@ fn draw (canvas: &mut Canvas<Window>, texture: &Texture, dst_rect: FRect, angle:
 {
     if let Some(a) = angle 
     {
-        let center = Some(FPoint{x: dst_rect.x + dst_rect.w/2.0, y: dst_rect.y + dst_rect.h/2.0});
-        canvas.copy_ex(texture, src_rect, Some(dst_rect), a, center, false, false).unwrap();
+        canvas.copy_ex(texture, src_rect, Some(dst_rect), a, None, false, false).unwrap();
     }
     else 
     {
@@ -42,17 +42,30 @@ fn draw (canvas: &mut Canvas<Window>, texture: &Texture, dst_rect: FRect, angle:
 }
 
 
-fn poll_events(event_pump: &mut EventPump,  game_event_state: &mut GameEventState)
+fn poll_events(event_pump: &mut EventPump,  ges: &mut GameEventState)
 {
     for event in event_pump.poll_iter() 
     {
         match event
         {
-            Event::Quit {..} => {game_event_state.game_stop = true;}
-            Event::KeyDown{keycode: Some(Keycode::Q), ..} => {game_event_state.game_stop = true;}
+            // General App keybinds
+            Event::Quit {..} => {ges.game_stop = true;}
+            Event::KeyDown{keycode: Some(Keycode::Escape), ..} => {ges.game_stop = true;}
 
-            Event::KeyDown{keycode: Some(Keycode::Z), ..} => {game_event_state.ship_fire_on = true;}
-            Event::KeyUp{keycode: Some(Keycode::Z), ..} => {game_event_state.ship_fire_on = false;}
+            // Fire_On keys
+            Event::KeyDown{keycode: Some(Keycode::Z), ..} => {ges.ship_fire_on = true;}
+            Event::KeyUp{keycode: Some(Keycode::Z), ..} => {ges.ship_fire_on = false;}
+
+            // Rotation buttons
+            Event::KeyDown{keycode: Some(Keycode::Q), ..} => {ges.ship_rotation_direction = RotationDirection::Left;}
+            Event::KeyDown{keycode: Some(Keycode::D), ..} => {ges.ship_rotation_direction = RotationDirection::Right;}
+
+            Event::KeyUp{keycode: Some(Keycode::Q), ..} if ges.ship_rotation_direction == RotationDirection::Left =>
+                {ges.ship_rotation_direction = RotationDirection::None;}
+            Event::KeyUp{keycode: Some(Keycode::D), ..} if ges.ship_rotation_direction == RotationDirection::Right =>
+                {ges.ship_rotation_direction = RotationDirection::None;}
+
+
             _ => {}
         }
     }
@@ -122,6 +135,7 @@ fn main()
 
         // Ship
         ship.fire_on = game_event_state.ship_fire_on;
+        ship.rotation_direction = game_event_state.ship_rotation_direction.clone();
         ship.update();
 
         // Draw 
@@ -135,10 +149,10 @@ fn main()
         draw(&mut canvas, &background, FRect{x: 0.0, y: 0.0, w: background.width() as f32, h: background.height() as f32}, None, None);
 
         // Draw Ship
-        draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: ship.size, h: ship.size}, None, Some(ship.body_rect));
+        draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: ship.size, h: ship.size}, Some(ship.angle), Some(ship.body_rect));
         if ship.fire_on 
         {
-            draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: ship.size, h: ship.size}, None, Some(ship.fire_rect));
+            draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: ship.size, h: ship.size}, Some(ship.angle), Some(ship.fire_rect));
         }
         
 

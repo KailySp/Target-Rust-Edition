@@ -4,13 +4,23 @@ pub mod ship
     use sdl3::image::LoadTexture;
     use sdl3::video::WindowContext;
 
-use crate::SCREEN_WIDTH;
+    use crate::SCREEN_WIDTH;
+    use crate::SCREEN_HEIGHT;
+
+    #[derive(PartialEq, Clone)]
+    pub enum RotationDirection
+    {
+        None,
+        Left,
+        Right
+    }
 
 
     // Constants parameters
     // ------------------------
     const MAX_SPEED: f32 = 5.;
-    const ROTATION_SPEED: f32 = 7.;
+    const ROTATION_SPEED_STICK: f64 = 7.;
+    const ROTATION_SPEED_BUTTON: f64 = 6.;
     const JET_POWER: f32 = 0.1;
 
     const MAX_ENERGY: f32 = 30.; 
@@ -20,7 +30,8 @@ use crate::SCREEN_WIDTH;
     {
         // State variables
         pub size: f32,
-        pub x: f32, pub y: f32, pub angle: f32,
+        pub x: f32, pub y: f32, pub angle: f64,
+        pub target_angle: Option<f64>, pub rotation_direction: RotationDirection,
         velocity_x: f32, velocity_y: f32,
         pub energy: f32, can_recharge: bool,
         pub fire_on: bool,
@@ -40,6 +51,7 @@ use crate::SCREEN_WIDTH;
                 // State variables
                 size: 64.0,
                 x: 500.0, y: 250.0, angle: 0.0,
+                target_angle: None, rotation_direction: RotationDirection::None,
                 velocity_x: 0.0, velocity_y: 0.0,
                 energy: MAX_ENERGY, can_recharge: true,
                 fire_on: false,
@@ -58,8 +70,8 @@ use crate::SCREEN_WIDTH;
             // Manage fire_on
             if self.fire_on
             {
-                self.velocity_x += (self.angle * std::f32::consts::PI/180.0).cos() * JET_POWER;
-                self.velocity_y += (self.angle * std::f32::consts::PI/180.0).sin() * JET_POWER;
+                self.velocity_x += ((self.angle as f32) * std::f32::consts::PI/180.0).cos() * JET_POWER;
+                self.velocity_y += ((self.angle as f32) * std::f32::consts::PI/180.0).sin() * JET_POWER;
 
                 // Manage max speed
                 self.velocity_x = if self.velocity_x > MAX_SPEED {MAX_SPEED} else {self.velocity_x};
@@ -72,17 +84,25 @@ use crate::SCREEN_WIDTH;
             self.y += self.velocity_y;
 
             // Manage Screen limit
-            match (self.x, self.y)
+            if self.x < 0. {self.velocity_x = 0.; self.x = 0.;}
+            if self.x > SCREEN_WIDTH - self.size {self.velocity_x = 0.; self.x = crate::SCREEN_WIDTH - self.size;}
+            if self.y < 0. {self.velocity_y = 0.; self.y = 0.;}
+            if self.y > SCREEN_HEIGHT - self.size {self.velocity_y = 0.; self.y = crate::SCREEN_HEIGHT - self.size;}
+
+
+            // Manage Rotation
+            match self.rotation_direction
             {
-                (x, _) if x < 0.0 => {self.velocity_x = 0.0; self.x = 0.0;}
-                (x, _) if x > crate::SCREEN_WIDTH - self.size => {self.velocity_x = 0.0; self.x = crate::SCREEN_WIDTH - self.size;}
-                (_, y) if y < 0.0 => {self.velocity_y = 0.0; self.y = 0.0;}
-                (_, y) if y > crate::SCREEN_HEIGHT - self.size => {self.velocity_y = 0.0; self.y = crate::SCREEN_HEIGHT - self.size;}
-                (_, _) => {}
+                RotationDirection::None => {}
+                RotationDirection::Left => {self.angle -= ROTATION_SPEED_BUTTON;}
+                RotationDirection::Right => {self.angle += ROTATION_SPEED_BUTTON;}
             }
 
+            if self.angle > 360. {self.angle -= 360.}
+            if self.angle < 0. {self.angle += 360.}
 
 
+            // Manages Lasers
 
 
         }
