@@ -2,13 +2,15 @@ use sdl3::pixels::Color;
 use sdl3::event::Event;
 use sdl3::EventPump;
 use sdl3::keyboard::Keycode;
-use sdl3::surface::Surface;
 use sdl3::render::{FRect, FPoint, Texture, Canvas};
 use sdl3::video::Window;
 use sdl3::mixer::Mixer;
+use sdl3::image::LoadTexture;
+
+use crate::ship::ship::Ship;
+mod ship;
 
 use std::time::Duration;
-
 struct GameEventState 
 {
     game_stop: bool,
@@ -23,18 +25,16 @@ impl GameEventState
 }
 
 
-fn draw (canvas: &mut Canvas<Window>, texture: &Texture, x: f32, y: f32, angle: Option<f64>, src_rect: Option<FRect>)
+fn draw (canvas: &mut Canvas<Window>, texture: &Texture, dst_rect: FRect, angle: Option<f64>, src_rect: Option<FRect>)
 {
-    let dst_rect = Some(FRect{x: x, y: y, w: texture.width() as f32, h: texture.height() as f32});
-
     if let Some(a) = angle 
     {
-        let center = Some(FPoint{x: x + (texture.width() as f32)/2.0, y: y + (texture.height() as f32)/2.0});
-        canvas.copy_ex(texture, src_rect, dst_rect, a, center, false, false).unwrap();
+        let center = Some(FPoint{x: dst_rect.x + dst_rect.w/2.0, y: dst_rect.y + dst_rect.h/2.0});
+        canvas.copy_ex(texture, src_rect, Some(dst_rect), a, center, false, false).unwrap();
     }
     else 
     {
-        canvas.copy(texture, src_rect, dst_rect).unwrap();
+        canvas.copy(texture, src_rect, Some(dst_rect)).unwrap();
     }
 }
 
@@ -88,14 +88,15 @@ fn main()
     let mut game_event_state = GameEventState::create();
 
     // Background
-    let background = Surface::load_surface("data/images/background.png").unwrap();
-    let background = texture_creator.create_texture_from_surface(&background).unwrap();
+    let background = texture_creator.load_texture("data/images/background.png").unwrap();
 
     // Soundtrack
     let target_song = mixer.load_audio("data/music/TargetSong.wav", true).unwrap();
     soundtrack.set_audio(&target_song).unwrap();
     soundtrack.play().unwrap();
 
+    // Ship
+    let mut ship = Ship::new(&texture_creator);
 
     
     // Main Loop
@@ -121,7 +122,14 @@ fn main()
         canvas.clear();
         
         // Draw background
-        draw(&mut canvas, &background, 0.0, 0.0, None, None);
+        draw(&mut canvas, &background, FRect{x: 0.0, y: 0.0, w: background.width() as f32, h: background.height() as f32}, None, None);
+
+        // Draw Ship
+        draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: ship.size, h: ship.size}, None, Some(ship.body_rect));
+        if ship.fire_on 
+        {
+            draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: ship.size, h: ship.size}, None, Some(ship.fire_rect));
+        }
         
 
         // Present and cap at 60fps
