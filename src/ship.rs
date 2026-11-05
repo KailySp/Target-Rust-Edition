@@ -1,11 +1,17 @@
-pub mod ship 
+pub mod ship
 {
+    use std::f32::consts::PI;
+
     use sdl3::render::{Texture, TextureCreator, FRect};
     use sdl3::image::LoadTexture;
     use sdl3::video::WindowContext;
 
     use crate::SCREEN_WIDTH;
     use crate::SCREEN_HEIGHT;
+
+    use crate::laser::laser::Laser;
+    use crate::laser::laser::LASER_WIDTH;
+    use crate::laser::laser::LASER_HEIGHT;
 
     #[derive(PartialEq, Clone)]
     pub enum RotationDirection
@@ -18,6 +24,8 @@ pub mod ship
 
     // Constants parameters
     // ------------------------
+    pub const SHIP_SIZE: f32 = 64.;
+
     const MAX_SPEED: f32 = 5.;
     const ROTATION_SPEED_STICK: f64 = 7.;
     const ROTATION_SPEED_BUTTON: f64 = 6.;
@@ -29,7 +37,6 @@ pub mod ship
     pub struct Ship<'a>
     {
         // State variables
-        pub size: f32,
         pub x: f32, pub y: f32, pub angle: f64,
         pub target_angle: Option<f64>, pub rotation_direction: RotationDirection,
         velocity_x: f32, velocity_y: f32,
@@ -40,6 +47,9 @@ pub mod ship
         pub sprite_texture: Texture<'a>,
         pub body_rect: FRect, pub fire_rect: FRect,
 
+        // Sound Data
+
+
     }
 
     impl<'a> Ship<'a>
@@ -49,7 +59,6 @@ pub mod ship
             Self
             {
                 // State variables
-                size: 64.0,
                 x: 500.0, y: 250.0, angle: 0.0,
                 target_angle: None, rotation_direction: RotationDirection::None,
                 velocity_x: 0.0, velocity_y: 0.0,
@@ -70,12 +79,12 @@ pub mod ship
             // Manage fire_on
             if self.fire_on
             {
-                self.velocity_x += ((self.angle as f32) * std::f32::consts::PI/180.0).cos() * JET_POWER;
-                self.velocity_y += ((self.angle as f32) * std::f32::consts::PI/180.0).sin() * JET_POWER;
+                self.velocity_x += ((self.angle as f32) * PI/180.).cos() * JET_POWER;
+                self.velocity_y += ((self.angle as f32) * PI/180.).sin() * JET_POWER;
 
                 // Manage max speed
-                self.velocity_x = if self.velocity_x > MAX_SPEED {MAX_SPEED} else {self.velocity_x};
-                self.velocity_y = if self.velocity_y > MAX_SPEED {MAX_SPEED} else {self.velocity_y};
+                self.velocity_x = if self.velocity_x.abs() > MAX_SPEED {MAX_SPEED*self.velocity_x.signum()} else {self.velocity_x};
+                self.velocity_y = if self.velocity_y.abs() > MAX_SPEED {MAX_SPEED*self.velocity_x.signum()} else {self.velocity_y};
 
             }
 
@@ -85,9 +94,9 @@ pub mod ship
 
             // Manage Screen limit
             if self.x < 0. {self.velocity_x = 0.; self.x = 0.;}
-            if self.x > SCREEN_WIDTH - self.size {self.velocity_x = 0.; self.x = crate::SCREEN_WIDTH - self.size;}
+            if self.x > SCREEN_WIDTH - SHIP_SIZE {self.velocity_x = 0.; self.x = crate::SCREEN_WIDTH - SHIP_SIZE;}
             if self.y < 0. {self.velocity_y = 0.; self.y = 0.;}
-            if self.y > SCREEN_HEIGHT - self.size {self.velocity_y = 0.; self.y = crate::SCREEN_HEIGHT - self.size;}
+            if self.y > SCREEN_HEIGHT - SHIP_SIZE {self.velocity_y = 0.; self.y = crate::SCREEN_HEIGHT - SHIP_SIZE;}
 
 
             // Manage Rotation
@@ -100,11 +109,23 @@ pub mod ship
 
             if self.angle > 360. {self.angle -= 360.}
             if self.angle < 0. {self.angle += 360.}
+        }
 
-
-            // Manages Lasers
-
-
+        pub fn fire(&mut self, texture_creator: &'a TextureCreator<WindowContext>) -> Option<Laser<'a>>
+        {
+            if self.energy <= 0. {None}
+            else
+            {
+                Some(Laser::new(
+                    texture_creator,
+                    (self.x + SHIP_SIZE/2.) - LASER_WIDTH/2.,
+                    (self.y + SHIP_SIZE/2.) - LASER_HEIGHT/2.,
+                    self.angle))
+            }
         }
     }
 }
+
+
+
+

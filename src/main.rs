@@ -7,9 +7,16 @@ use sdl3::video::Window;
 use sdl3::mixer::Mixer;
 use sdl3::image::LoadTexture;
 
-use crate::ship::ship::Ship;
-use crate::ship::ship::RotationDirection;
+use ship::ship::Ship;
+use ship::ship::SHIP_SIZE;
+use ship::ship::RotationDirection;
 mod ship;
+
+mod laser;
+use laser::laser::Laser;
+use laser::laser::LASER_WIDTH;
+use laser::laser::LASER_HEIGHT;
+
 
 use std::time::Duration;
 
@@ -18,13 +25,13 @@ pub static SCREEN_HEIGHT: f32 = 500.0;
 
 struct GameEventState 
 {
-    game_stop: bool, ship_fire_on: bool, ship_rotation_direction: RotationDirection
+    game_stop: bool, ship_fire_on: bool, ship_rotation_direction: RotationDirection, ship_fire_laser: bool
 }
 impl GameEventState 
 {
     fn create() -> Self
     {
-        Self { game_stop: false, ship_fire_on: false, ship_rotation_direction: RotationDirection::None}
+        Self { game_stop: false, ship_fire_on: false, ship_rotation_direction: RotationDirection::None, ship_fire_laser: false}
     }
 }
 
@@ -65,6 +72,10 @@ fn poll_events(event_pump: &mut EventPump,  ges: &mut GameEventState)
             Event::KeyUp{keycode: Some(Keycode::D), ..} if ges.ship_rotation_direction == RotationDirection::Right =>
                 {ges.ship_rotation_direction = RotationDirection::None;}
 
+            //Lasers
+            Event::KeyDown{keycode: Some(Keycode::L), ..} => {ges.ship_fire_laser = true;}
+
+
 
             _ => {}
         }
@@ -97,7 +108,6 @@ fn main()
     let _ = sdl3::mixer::init().unwrap();
     let mixer = Mixer::open_device(None).unwrap();
     let soundtrack = mixer.create_track().unwrap();
-    soundtrack.set_loops(-1).unwrap();
 
 
     // In game setup
@@ -113,9 +123,13 @@ fn main()
     let target_song = mixer.load_audio("data/music/TargetSong.wav", true).unwrap();
     soundtrack.set_audio(&target_song).unwrap();
     soundtrack.play().unwrap();
+    soundtrack.set_loops(-1).unwrap();
 
     // Ship
     let mut ship = Ship::new(&texture_creator);
+
+    // Lasers
+    let mut lasers = Vec::<Laser>::new();
 
     
     // Main Loop
@@ -137,6 +151,19 @@ fn main()
         ship.fire_on = game_event_state.ship_fire_on;
         ship.rotation_direction = game_event_state.ship_rotation_direction.clone();
         ship.update();
+        if game_event_state.ship_fire_laser
+        {
+            match ship.fire(&texture_creator)
+            {
+                None => {}
+                Some(laser) => {lasers.push(laser);}
+            }
+            game_event_state.ship_fire_laser = false;
+        }
+
+        // Lasers
+        for laser in &mut lasers {laser.update();}
+        lasers = lasers.into_iter().filter(|l| !l.to_destroy).collect();
 
         // Draw 
         // --------
@@ -149,12 +176,18 @@ fn main()
         draw(&mut canvas, &background, FRect{x: 0.0, y: 0.0, w: background.width() as f32, h: background.height() as f32}, None, None);
 
         // Draw Ship
-        draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: ship.size, h: ship.size}, Some(ship.angle), Some(ship.body_rect));
+        draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: SHIP_SIZE, h: SHIP_SIZE}, Some(ship.angle), Some(ship.body_rect));
         if ship.fire_on 
         {
-            draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: ship.size, h: ship.size}, Some(ship.angle), Some(ship.fire_rect));
+            draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: SHIP_SIZE, h: SHIP_SIZE}, Some(ship.angle), Some(ship.fire_rect));
         }
         
+        // Draw lasers
+        for laser in &mut lasers
+        {
+            draw(&mut canvas, &laser.sprite_texture, FRect{x: laser.x, y: laser.y, w: LASER_WIDTH, h: LASER_HEIGHT}, Some(laser.angle), None);
+        }
+
 
         // Present and cap at 60fps
         canvas.present();
