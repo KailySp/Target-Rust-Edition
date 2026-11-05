@@ -5,6 +5,7 @@ pub mod ship
     use sdl3::render::{Texture, TextureCreator, FRect};
     use sdl3::image::LoadTexture;
     use sdl3::video::WindowContext;
+    use sdl3::mixer::{Mixer, Audio};
 
     use crate::SCREEN_WIDTH;
     use crate::SCREEN_HEIGHT;
@@ -34,7 +35,7 @@ pub mod ship
     const MAX_ENERGY: f32 = 30.; 
     const CHARGE_RATE: f32 = 1./5.;
 
-    pub struct Ship<'a>
+    pub struct Ship<'tc, 'm>
     {
         // State variables
         pub x: f32, pub y: f32, pub angle: f64,
@@ -44,17 +45,19 @@ pub mod ship
         pub fire_on: bool,
 
         // Graphical Data
-        pub sprite_texture: Texture<'a>,
+        pub sprite_texture: Texture<'tc>,
         pub body_rect: FRect, pub fire_rect: FRect,
 
         // Sound Data
+        mixer: &'m Mixer,
+        laser_sfx: Audio,
 
 
     }
 
-    impl<'a> Ship<'a>
+    impl<'tc, 'm> Ship<'tc, 'm>
     {
-        pub fn new(texture_creator: &'a TextureCreator<WindowContext>) -> Self
+        pub fn new(texture_creator: &'tc TextureCreator<WindowContext>, new_mixer: &'m Mixer) -> Self
         {
             Self
             {
@@ -71,6 +74,10 @@ pub mod ship
                 body_rect: FRect{x:2048.0, y:0.0, w:256.0, h:256.0}, 
                 fire_rect: FRect{x:2048.0, y:256.0, w:256.0, h:256.0},
 
+                // Sound Data
+                mixer: new_mixer,
+                laser_sfx: new_mixer.load_audio("data/music/lazer.wav", true).unwrap(),
+
             }
         }
 
@@ -84,7 +91,7 @@ pub mod ship
 
                 // Manage max speed
                 self.velocity_x = if self.velocity_x.abs() > MAX_SPEED {MAX_SPEED*self.velocity_x.signum()} else {self.velocity_x};
-                self.velocity_y = if self.velocity_y.abs() > MAX_SPEED {MAX_SPEED*self.velocity_x.signum()} else {self.velocity_y};
+                self.velocity_y = if self.velocity_y.abs() > MAX_SPEED {MAX_SPEED*self.velocity_y.signum()} else {self.velocity_y};
 
             }
 
@@ -111,11 +118,12 @@ pub mod ship
             if self.angle < 0. {self.angle += 360.}
         }
 
-        pub fn fire(&mut self, texture_creator: &'a TextureCreator<WindowContext>) -> Option<Laser<'a>>
+        pub fn fire(&mut self, texture_creator: &'tc TextureCreator<WindowContext>) -> Option<Laser<'tc>>
         {
             if self.energy <= 0. {None}
             else
             {
+                self.mixer.play_audio(&self.laser_sfx).unwrap();
                 Some(Laser::new(
                     texture_creator,
                     (self.x + SHIP_SIZE/2.) - LASER_WIDTH/2.,

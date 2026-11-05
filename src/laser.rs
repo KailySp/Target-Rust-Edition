@@ -14,19 +14,19 @@ pub mod laser
 
     const SPEED: f32 = 10.;
 
-    pub struct Laser<'a>
+    pub struct Laser<'tc>
     {
         // State variables
         pub x: f32, pub y: f32, pub angle: f64,
         pub to_destroy: bool,
 
         // Graphical Data
-        pub sprite_texture: Texture<'a>,
+        pub sprite_texture: Texture<'tc>,
     }
 
-    impl<'a> Laser<'a>
+    impl<'tc> Laser<'tc>
     {
-        pub fn new(texture_creator: &'a TextureCreator<WindowContext>, start_x: f32, start_y: f32, start_angle: f64) -> Self
+        pub fn new(texture_creator: &'tc TextureCreator<WindowContext>, start_x: f32, start_y: f32, start_angle: f64) -> Self
         {
             Self
             {

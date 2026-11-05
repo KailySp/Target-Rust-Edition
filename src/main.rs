@@ -17,11 +17,16 @@ use laser::laser::Laser;
 use laser::laser::LASER_WIDTH;
 use laser::laser::LASER_HEIGHT;
 
+mod asteroid;
+use asteroid::asteroid::Asteroid;
+
 
 use std::time::Duration;
 
 pub static SCREEN_WIDTH: f32 = 1000.0;
 pub static SCREEN_HEIGHT: f32 = 500.0;
+
+pub static MAIN_SPEED: f32 = 3. ;
 
 struct GameEventState 
 {
@@ -126,7 +131,7 @@ fn main()
     soundtrack.set_loops(-1).unwrap();
 
     // Ship
-    let mut ship = Ship::new(&texture_creator);
+    let mut ship = Ship::new(&texture_creator, &mixer);
 
     // Lasers
     let mut lasers = Vec::<Laser>::new();
