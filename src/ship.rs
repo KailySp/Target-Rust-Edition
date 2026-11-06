@@ -23,7 +23,7 @@ pub mod ship
     }
 
 
-    // Constants parameters
+    // Constants parameters with a bunch of lucky numbers
     // ------------------------
     pub const SHIP_SIZE: f32 = 64.;
 

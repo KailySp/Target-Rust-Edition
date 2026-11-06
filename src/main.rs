@@ -2,8 +2,8 @@ use sdl3::pixels::Color;
 use sdl3::event::Event;
 use sdl3::EventPump;
 use sdl3::keyboard::Keycode;
-use sdl3::render::{FRect, Texture, Canvas};
-use sdl3::video::Window;
+use sdl3::render::{FRect, Texture, TextureCreator, Canvas};
+use sdl3::video::{Window, WindowContext};
 use sdl3::mixer::Mixer;
 use sdl3::image::LoadTexture;
 
@@ -26,7 +26,8 @@ use std::time::Duration;
 pub static SCREEN_WIDTH: f32 = 1000.0;
 pub static SCREEN_HEIGHT: f32 = 500.0;
 
-pub static MAIN_SPEED: f32 = 3. ;
+pub static MAIN_SPEED: f32 = 3. ; // we love lucky number here :3
+pub static DEBRI_FREQUENCY: f32 = 30.; // this value is in frame lol
 
 struct GameEventState 
 {
@@ -88,6 +89,31 @@ fn poll_events(event_pump: &mut EventPump,  ges: &mut GameEventState)
 }
 
 
+
+fn random_asteroid<'tc>(texture_creator: &'tc TextureCreator<WindowContext>) -> Asteroid<'tc>
+{
+    let new_size = rand::random_range(40..140);
+    let start_y = rand::random_range(new_size..(500 - new_size));
+    let new_type = rand::random_range(0..4);
+    let new_angle = rand::random_range(0..360);
+    let rd = rand::random_range(0..=1);
+    Asteroid::new(texture_creator, start_y as f32, new_angle as f64, new_size as f32, new_type, rd)
+}
+
+fn update_level<'tc>(texture_creator: &'tc TextureCreator<WindowContext>, debri_timer: &mut f32, asteroids: &mut Vec<Asteroid<'tc>>)
+{
+    *debri_timer -= 1.;
+    if *debri_timer <= 0.
+    {
+        let number = rand::random_range(0..10);
+        if number == 1 {}
+        else if number <= 7 {asteroids.push(random_asteroid(texture_creator));}
+
+        *debri_timer = DEBRI_FREQUENCY;
+    }
+}
+
+
 fn main() 
 {
     // Init SDL
@@ -133,8 +159,11 @@ fn main()
     // Ship
     let mut ship = Ship::new(&texture_creator, &mixer);
 
-    // Lasers
+    // Vectors
     let mut lasers = Vec::<Laser>::new();
+    let mut asteroids = Vec::<Asteroid>::new();
+
+    let mut debri_timer: f32 = DEBRI_FREQUENCY;
 
     
     // Main Loop
@@ -146,8 +175,8 @@ fn main()
         poll_events(&mut event_pump, &mut game_event_state);
 
 
-        // Update
-        // ---------
+        // Updates
+        // ------------------
 
         // Main Game
         if game_event_state.game_stop {game_running = false};
@@ -170,8 +199,22 @@ fn main()
         for laser in &mut lasers {laser.update();}
         lasers = lasers.into_iter().filter(|l| !l.to_destroy).collect();
 
+        // Asteroids
+        for asteroid in &mut asteroids {asteroid.update();}
+        asteroids = asteroids.into_iter().filter(|a| !a.to_destroy).collect();
+
+        // Level
+        update_level(&texture_creator, &mut debri_timer, &mut asteroids);
+
+
+
+        // Game logic
+        // -------------------
+
+
+
         // Draw 
-        // --------
+        // ------------------
         
         // Clear the board 
         canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -193,6 +236,12 @@ fn main()
             draw(&mut canvas, &laser.sprite_texture, FRect{x: laser.x, y: laser.y, w: LASER_WIDTH, h: LASER_HEIGHT}, Some(laser.angle), None);
         }
 
+        // Draw asteroids
+        for asteroid in &mut asteroids
+        {
+            draw(&mut canvas, &asteroid.sprite_texture, FRect{x: asteroid.x, y: asteroid.y, w: asteroid.size, h: asteroid.size},
+                 Some(asteroid.angle),  Some(asteroid.sprite_rect));
+        }
 
         // Present and cap at 60fps
         canvas.present();
