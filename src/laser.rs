@@ -6,8 +6,8 @@ pub mod laser
     use sdl3::video::WindowContext;
     use sdl3::image::LoadTexture;
 
-    use crate::SCREEN_WIDTH;
-    use crate::SCREEN_HEIGHT;
+
+    use crate::{CircleCollider, SCREEN_HEIGHT, SCREEN_WIDTH};
 
     pub const LASER_WIDTH: f32 = 50.;
     pub const LASER_HEIGHT: f32 = 13.;
@@ -50,5 +50,15 @@ pub mod laser
                 || self.y < -LASER_WIDTH || self.y > SCREEN_HEIGHT + LASER_WIDTH
             {self.to_destroy = true;}
         }
+
+        pub fn get_circle_collider(&self) -> CircleCollider
+        {
+            CircleCollider {
+                x: (self.x + LASER_WIDTH/2.) + ((self.angle as f32) * PI/180.).cos() * LASER_WIDTH/2.,
+                y: (self.y + LASER_HEIGHT/2.) + ((self.angle as f32) * PI/180.).sin() * LASER_WIDTH/2.,
+                r: 1.}
+        }
+
+        pub fn destroy(&mut self) {self.to_destroy = true;}
     }
 }

@@ -23,11 +23,15 @@ use asteroid::asteroid::Asteroid;
 
 use std::time::Duration;
 
+
+
 pub static SCREEN_WIDTH: f32 = 1000.0;
 pub static SCREEN_HEIGHT: f32 = 500.0;
 
 pub static MAIN_SPEED: f32 = 3. ; // we love lucky number here :3
 pub static DEBRI_FREQUENCY: f32 = 30.; // this value is in frame lol
+
+
 
 struct GameEventState 
 {
@@ -41,6 +45,17 @@ impl GameEventState
     }
 }
 
+struct CircleCollider
+{
+    x: f32,
+    y: f32,
+    r: f32
+}
+
+fn collide_circle(c1: CircleCollider, c2: CircleCollider) -> bool
+{
+    ((c1.x - c2.x).powi(2) + (c1.y - c2.y).powi(2)).sqrt() < c1.r + c2.r
+}
 
 fn draw (canvas: &mut Canvas<Window>, texture: &Texture, dst_rect: FRect, angle: Option<f64>, src_rect: Option<FRect>)
 {
@@ -114,6 +129,9 @@ fn update_level<'tc>(texture_creator: &'tc TextureCreator<WindowContext>, debri_
 }
 
 
+
+
+
 fn main() 
 {
     // Init SDL
@@ -123,6 +141,7 @@ fn main()
 
     let window = video_subsystem.window("Target Rust Edition", 1000, 500)
         .position_centered()
+        .resizable()
         .build()
         .unwrap();
 
@@ -208,9 +227,17 @@ fn main()
 
 
 
-        // Game logic
+        // Collisions
         // -------------------
 
+        // Lasers & Asteroids
+        for laser in &mut lasers
+        {
+            for asteroid in &mut asteroids
+            {
+                if collide_circle(laser.get_circle_collider(), asteroid.get_circle_collider()) {laser.destroy();}
+            }
+        }
 
 
         // Draw 

@@ -4,8 +4,7 @@ pub mod asteroid
     use sdl3::image::LoadTexture;
     use sdl3::video::{WindowContext};
 
-    use crate::SCREEN_WIDTH;
-    use crate::MAIN_SPEED;
+    use crate::{SCREEN_WIDTH, MAIN_SPEED, CircleCollider};
 
 
     const SPEED_RATIO: f32 = 60.; // another lucky number :3
@@ -52,6 +51,11 @@ pub mod asteroid
             if self.angle < 0. {self.angle += 360.}
 
             self.to_destroy = self.x < -self.size;
+        }
+
+        pub fn get_circle_collider(&self) -> CircleCollider
+        {
+            CircleCollider { x: self.x + self.size/2., y: self.y + self.size/2., r: self.size/2.}
         }
     }
 }

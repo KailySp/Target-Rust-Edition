@@ -7,12 +7,9 @@ pub mod ship
     use sdl3::video::WindowContext;
     use sdl3::mixer::{Mixer, Audio};
 
-    use crate::SCREEN_WIDTH;
-    use crate::SCREEN_HEIGHT;
+    use crate::{CircleCollider, SCREEN_HEIGHT, SCREEN_WIDTH};
 
-    use crate::laser::laser::Laser;
-    use crate::laser::laser::LASER_WIDTH;
-    use crate::laser::laser::LASER_HEIGHT;
+    use crate::laser::laser::{Laser, LASER_WIDTH, LASER_HEIGHT};
 
     #[derive(PartialEq, Clone)]
     pub enum RotationDirection
@@ -130,6 +127,11 @@ pub mod ship
                     (self.y + SHIP_SIZE/2.) - LASER_HEIGHT/2.,
                     self.angle))
             }
+        }
+
+        pub fn get_circle_collider(&self) -> CircleCollider
+        {
+            CircleCollider { x: self.x + SHIP_SIZE/2., y: self.y + SHIP_SIZE/2., r: SHIP_SIZE/2.}
         }
     }
 }
