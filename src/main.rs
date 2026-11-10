@@ -7,18 +7,17 @@ use sdl3::video::{Window, WindowContext};
 use sdl3::mixer::Mixer;
 use sdl3::image::LoadTexture;
 
-use ship::ship::Ship;
-use ship::ship::SHIP_SIZE;
-use ship::ship::RotationDirection;
 mod ship;
+use ship::ship::{Ship, SHIP_SIZE, RotationDirection};
 
 mod laser;
-use laser::laser::Laser;
-use laser::laser::LASER_WIDTH;
-use laser::laser::LASER_HEIGHT;
+use laser::laser::{Laser, LASER_WIDTH, LASER_HEIGHT};
 
 mod asteroid;
 use asteroid::asteroid::Asteroid;
+
+mod target;
+use target::target::Target;
 
 
 use std::time::Duration;
@@ -115,13 +114,21 @@ fn random_asteroid<'tc>(texture_creator: &'tc TextureCreator<WindowContext>) -> 
     Asteroid::new(texture_creator, start_y as f32, new_angle as f64, new_size as f32, new_type, rd)
 }
 
-fn update_level<'tc>(texture_creator: &'tc TextureCreator<WindowContext>, debri_timer: &mut f32, asteroids: &mut Vec<Asteroid<'tc>>)
+fn random_target<'tc>(texture_creator: &'tc TextureCreator<WindowContext>) -> Target<'tc>
+{
+    let new_size = rand::random_range(50..150);
+    let start_y = rand::random_range(new_size..(500 - new_size));
+    let new_type = rand::random_range(0..3);
+    Target::new(texture_creator, start_y as f32, new_size as f32, new_type)
+}
+
+fn update_level<'tc>(texture_creator: &'tc TextureCreator<WindowContext>, debri_timer: &mut f32, asteroids: &mut Vec<Asteroid<'tc>>, targets: &mut Vec<Target<'tc>>)
 {
     *debri_timer -= 1.;
     if *debri_timer <= 0.
     {
         let number = rand::random_range(0..10);
-        if number == 1 {}
+        if number == 1 {targets.push(random_target(texture_creator));}
         else if number <= 7 {asteroids.push(random_asteroid(texture_creator));}
 
         *debri_timer = DEBRI_FREQUENCY;
@@ -181,6 +188,7 @@ fn main()
     // Vectors
     let mut lasers = Vec::<Laser>::new();
     let mut asteroids = Vec::<Asteroid>::new();
+    let mut targets = Vec::<Target>::new();
 
     let mut debri_timer: f32 = DEBRI_FREQUENCY;
 
@@ -222,8 +230,12 @@ fn main()
         for asteroid in &mut asteroids {asteroid.update();}
         asteroids = asteroids.into_iter().filter(|a| !a.to_destroy).collect();
 
+        // Targets
+        for target in &mut targets {target.update();}
+        targets = targets.into_iter().filter(|t| !t.to_destroy).collect();
+
         // Level
-        update_level(&texture_creator, &mut debri_timer, &mut asteroids);
+        update_level(&texture_creator, &mut debri_timer, &mut asteroids, &mut targets);
 
 
 
@@ -261,6 +273,12 @@ fn main()
         for laser in &mut lasers
         {
             draw(&mut canvas, &laser.sprite_texture, FRect{x: laser.x, y: laser.y, w: LASER_WIDTH, h: LASER_HEIGHT}, Some(laser.angle), None);
+        }
+
+        // Draw targets
+        for target in &mut targets
+        {
+            draw(&mut canvas, &target.sprite_texture, FRect { x: target.x, y: target.y, w: target.size, h: target.size}, None, None);
         }
 
         // Draw asteroids
