@@ -182,6 +182,9 @@ fn main()
     soundtrack.play().unwrap();
     soundtrack.set_loops(-1).unwrap();
 
+    let target_break = mixer.load_audio("data/music/break.wav", true).unwrap();
+
+
     // Ship
     let mut ship = Ship::new(&texture_creator, &mixer);
 
@@ -250,6 +253,22 @@ fn main()
                 if collide_circle(laser.get_circle_collider(), asteroid.get_circle_collider()) {laser.destroy();}
             }
         }
+
+        // Laser & Targets
+        for laser in &mut lasers
+        {
+            for target in &mut targets
+            {
+                if collide_circle(laser.get_circle_collider(), target.get_circle_collider())
+                {
+                    laser.destroy();
+                    target.destroy();
+                    mixer.play_audio(&target_break).unwrap();
+
+                }
+            }
+        }
+
 
 
         // Draw 

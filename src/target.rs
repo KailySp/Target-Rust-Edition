@@ -44,6 +44,8 @@ pub mod target
             if self.x < -self.size {self.to_destroy = true}
         }
 
+        pub fn destroy(&mut self) {self.to_destroy = true}
+
         pub fn get_circle_collider(&self) -> CircleCollider
         {
             CircleCollider { x: self.x + self.size/2., y: self.y + self.size/2., r: self.size/2.}
