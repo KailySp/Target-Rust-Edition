@@ -46,6 +46,8 @@ pub mod target
 
         pub fn destroy(&mut self) {self.to_destroy = true}
 
+        pub fn get_value(&self) -> i32 {(100. * (1. - ((self.size - 50.)/100.))) as i32}
+
         pub fn get_circle_collider(&self) -> CircleCollider
         {
             CircleCollider { x: self.x + self.size/2., y: self.y + self.size/2., r: self.size/2.}

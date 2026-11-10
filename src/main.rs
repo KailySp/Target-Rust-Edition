@@ -6,6 +6,7 @@ use sdl3::render::{FRect, Texture, TextureCreator, Canvas};
 use sdl3::video::{Window, WindowContext};
 use sdl3::mixer::Mixer;
 use sdl3::image::LoadTexture;
+use sdl3::ttf::Font;
 
 mod ship;
 use ship::ship::{Ship, SHIP_SIZE, RotationDirection};
@@ -166,6 +167,11 @@ fn main()
     let mixer = Mixer::open_device(None).unwrap();
     let soundtrack = mixer.create_track().unwrap();
 
+    // TTF INIT
+    // ------------
+    let ttf_context = sdl3::ttf::init().unwrap();
+    let pixel_font = ttf_context.load_font("data/fonts/m5x7.ttf", 50.).unwrap();
+
 
     // In game setup
     // ------------------
@@ -193,7 +199,9 @@ fn main()
     let mut asteroids = Vec::<Asteroid>::new();
     let mut targets = Vec::<Target>::new();
 
+    // random variables
     let mut debri_timer: f32 = DEBRI_FREQUENCY;
+    let mut score: i32 = 0;
 
     
     // Main Loop
@@ -261,10 +269,10 @@ fn main()
             {
                 if collide_circle(laser.get_circle_collider(), target.get_circle_collider())
                 {
+                    score += target.get_value(); // score semble être une copie ici :/
                     laser.destroy();
                     target.destroy();
                     mixer.play_audio(&target_break).unwrap();
-
                 }
             }
         }
@@ -306,6 +314,18 @@ fn main()
             draw(&mut canvas, &asteroid.sprite_texture, FRect{x: asteroid.x, y: asteroid.y, w: asteroid.size, h: asteroid.size},
                  Some(asteroid.angle),  Some(asteroid.sprite_rect));
         }
+
+        // UI
+        // --------------
+
+        // Score
+        let score_text = format!("score : {0}", score);
+        let score_surface = pixel_font.render(&score_text).solid(Color::RGBA(0, 255, 0, 255)).unwrap();
+        let score_texture = texture_creator.create_texture_from_surface(&score_surface).unwrap();
+        draw(&mut canvas, &score_texture, FRect { x: 450., y: 0., w: score_texture.width() as f32, h: score_texture.height() as f32}, None, None);
+
+
+
 
         // Present and cap at 60fps
         canvas.present();
