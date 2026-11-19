@@ -6,7 +6,7 @@ use sdl3::render::{FRect, Texture, TextureCreator, Canvas};
 use sdl3::video::{Window, WindowContext};
 use sdl3::mixer::Mixer;
 use sdl3::image::LoadTexture;
-use sdl3::ttf::Font;
+
 
 mod ship;
 use ship::ship::{Ship, SHIP_SIZE, RotationDirection};
@@ -20,6 +20,8 @@ use asteroid::asteroid::Asteroid;
 mod target;
 use target::target::Target;
 
+mod score_info;
+use score_info::score_info::{ScoreInfo, SCORE_INFO_SIZE};
 
 use std::time::Duration;
 
@@ -29,7 +31,9 @@ pub static SCREEN_WIDTH: f32 = 1000.0;
 pub static SCREEN_HEIGHT: f32 = 500.0;
 
 pub static MAIN_SPEED: f32 = 3. ; // we love lucky number here :3
-pub static DEBRI_FREQUENCY: f32 = 30.; // this value is in frame lol
+pub static DEBRI_FREQUENCY: f32 = 30.; // this value is in frame lol (one debri every 30 frames)
+
+pub static HEALTH_SIZE: f32 = 64.; // who doesn't like lucky number ?
 
 
 
@@ -84,7 +88,7 @@ fn poll_events(event_pump: &mut EventPump,  ges: &mut GameEventState)
             Event::KeyDown{keycode: Some(Keycode::Z), ..} => {ges.ship_fire_on = true;}
             Event::KeyUp{keycode: Some(Keycode::Z), ..} => {ges.ship_fire_on = false;}
 
-            // Rotation buttons
+            // Rotation buttonsSCORE_INFO_SIZE
             Event::KeyDown{keycode: Some(Keycode::Q), ..} => {ges.ship_rotation_direction = RotationDirection::Left;}
             Event::KeyDown{keycode: Some(Keycode::D), ..} => {ges.ship_rotation_direction = RotationDirection::Right;}
 
@@ -198,10 +202,14 @@ fn main()
     let mut lasers = Vec::<Laser>::new();
     let mut asteroids = Vec::<Asteroid>::new();
     let mut targets = Vec::<Target>::new();
+    let mut score_infos = Vec::<ScoreInfo>::new();
 
     // random variables
     let mut debri_timer: f32 = DEBRI_FREQUENCY;
-    let mut score: i32 = 0;
+    let mut score: Box<i32> = Box::new(0); // apparently score has to be contenerize because it makes copy everywhere else because it's a primitive
+
+    // Health png
+    let health_texture = texture_creator.load_texture("data/images/life.png").unwrap();
 
     
     // Main Loop
@@ -245,6 +253,10 @@ fn main()
         for target in &mut targets {target.update();}
         targets = targets.into_iter().filter(|t| !t.to_destroy).collect();
 
+        // ScoreInfos
+        for score_info in &mut score_infos  {score_info.update();}
+        score_infos = score_infos.into_iter().filter(|si| !si.to_destroy).collect();
+
         // Level
         update_level(&texture_creator, &mut debri_timer, &mut asteroids, &mut targets);
 
@@ -269,10 +281,13 @@ fn main()
             {
                 if collide_circle(laser.get_circle_collider(), target.get_circle_collider())
                 {
-                    score += target.get_value(); // score semble être une copie ici :/
+                    *score += target.get_value(); // score semble être une copie ici :/
                     laser.destroy();
                     target.destroy();
                     mixer.play_audio(&target_break).unwrap();
+
+                    // Spawn score info
+                    score_infos.push(ScoreInfo::new(&texture_creator, &pixel_font, target.x + target.size/2., target.y + target.size/2., target.get_value()));
                 }
             }
         }
@@ -318,6 +333,13 @@ fn main()
         // UI
         // --------------
 
+        // Score infos
+        for score_info in &mut score_infos
+        {
+            draw(&mut canvas, &score_info.score_texture, FRect { x: score_info.x, y: score_info.y, w: SCORE_INFO_SIZE, h: SCORE_INFO_SIZE}, None, None);
+        }
+
+
         // Score
         let score_text = format!("score : {0}", score);
         let score_surface = pixel_font.render(&score_text).solid(Color::RGBA(0, 255, 0, 255)).unwrap();
@@ -325,6 +347,13 @@ fn main()
         draw(&mut canvas, &score_texture, FRect { x: 450., y: 0., w: score_texture.width() as f32, h: score_texture.height() as f32}, None, None);
 
 
+        // Health
+        for i in 0..ship.health
+        {
+            let dst_rect = FRect { x: HEALTH_SIZE * i as f32, y: 1., w: HEALTH_SIZE, h: HEALTH_SIZE };
+            draw(&mut canvas, &health_texture, dst_rect, None, None);
+
+        }
 
 
         // Present and cap at 60fps

@@ -32,6 +32,8 @@ pub mod ship
     const MAX_ENERGY: f32 = 30.; 
     const CHARGE_RATE: f32 = 1./5.;
 
+    const MAX_HEALTH: i8 = 3;
+
     pub struct Ship<'tc, 'm>
     {
         // State variables
@@ -39,7 +41,7 @@ pub mod ship
         pub target_angle: Option<f64>, pub rotation_direction: RotationDirection,
         velocity_x: f32, velocity_y: f32,
         pub energy: f32, can_recharge: bool,
-        pub fire_on: bool,
+        pub fire_on: bool, pub health: i8,
 
         // Graphical Data
         pub sprite_texture: Texture<'tc>,
@@ -63,7 +65,7 @@ pub mod ship
                 target_angle: None, rotation_direction: RotationDirection::None,
                 velocity_x: 0.0, velocity_y: 0.0,
                 energy: MAX_ENERGY, can_recharge: true,
-                fire_on: false,
+                fire_on: false, health: MAX_HEALTH,
 
 
                 // Graphical data 
