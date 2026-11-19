@@ -29,10 +29,14 @@ pub mod ship
     const ROTATION_SPEED_BUTTON: f64 = 6.;
     const JET_POWER: f32 = 0.1;
 
-    const MAX_ENERGY: f32 = 30.; 
+    pub const SHIP_MAX_ENERGY: f32 = 30.;
     const CHARGE_RATE: f32 = 1./5.;
 
     const MAX_HEALTH: i8 = 3;
+
+    const DAMAGE_TIME: i32 = 120;
+    const BLINK_TIME: i32 = 10;
+    const BLOW_TIME: i32 = 150;
 
     pub struct Ship<'tc, 'm>
     {
@@ -42,6 +46,10 @@ pub mod ship
         velocity_x: f32, velocity_y: f32,
         pub energy: f32, can_recharge: bool,
         pub fire_on: bool, pub health: i8,
+        pub damaged: bool, pub blowing_up: bool,
+        damaged_timer: i32, blink_timer: i32, blow_timer: i32,
+        pub visible: bool, stunt: bool,
+        pub to_destroy: bool,
 
         // Graphical Data
         pub sprite_texture: Texture<'tc>,
@@ -50,7 +58,8 @@ pub mod ship
         // Sound Data
         mixer: &'m Mixer,
         laser_sfx: Audio,
-
+        spark_sfx: Audio,
+        blow_sfx: Audio,
 
     }
 
@@ -64,9 +73,12 @@ pub mod ship
                 x: 500.0, y: 250.0, angle: 0.0,
                 target_angle: None, rotation_direction: RotationDirection::None,
                 velocity_x: 0.0, velocity_y: 0.0,
-                energy: MAX_ENERGY, can_recharge: true,
+                energy: SHIP_MAX_ENERGY, can_recharge: true,
                 fire_on: false, health: MAX_HEALTH,
-
+                damaged: false, blowing_up: false,
+                damaged_timer: DAMAGE_TIME, blink_timer: BLINK_TIME, blow_timer: BLOW_TIME,
+                visible: true, stunt: false,
+                to_destroy: false,
 
                 // Graphical data 
                 sprite_texture: texture_creator.load_texture("data/images/sprites.png").unwrap(),
@@ -76,27 +88,34 @@ pub mod ship
                 // Sound Data
                 mixer: new_mixer,
                 laser_sfx: new_mixer.load_audio("data/music/lazer.wav", true).unwrap(),
-
+                spark_sfx: new_mixer.load_audio("data/music/spark.wav", true).unwrap(),
+                blow_sfx: new_mixer.load_audio("data/music/blow.wav", true).unwrap()
             }
         }
 
+
         pub fn update(&mut self)
         {
-            // Manage fire_on
-            if self.fire_on
+            // Manage
+            if !self.stunt && !self.blowing_up
             {
-                self.velocity_x += ((self.angle as f32) * PI/180.).cos() * JET_POWER;
-                self.velocity_y += ((self.angle as f32) * PI/180.).sin() * JET_POWER;
+                if self.fire_on
+                {
+                    self.velocity_x += ((self.angle as f32) * PI/180.).cos() * JET_POWER;
+                    self.velocity_y += ((self.angle as f32) * PI/180.).sin() * JET_POWER;
 
-                // Manage max speed
-                self.velocity_x = if self.velocity_x.abs() > MAX_SPEED {MAX_SPEED*self.velocity_x.signum()} else {self.velocity_x};
-                self.velocity_y = if self.velocity_y.abs() > MAX_SPEED {MAX_SPEED*self.velocity_y.signum()} else {self.velocity_y};
+                    // Manage max speed
+                    self.velocity_x = if self.velocity_x.abs() > MAX_SPEED {MAX_SPEED*self.velocity_x.signum()} else {self.velocity_x};
+                    self.velocity_y = if self.velocity_y.abs() > MAX_SPEED {MAX_SPEED*self.velocity_y.signum()} else {self.velocity_y};
+
+                }
 
             }
 
             // Manage Space physics
             self.x += self.velocity_x;
             self.y += self.velocity_y;
+
 
             // Manage Screen limit
             if self.x < 0. {self.velocity_x = 0.; self.x = 0.;}
@@ -115,11 +134,88 @@ pub mod ship
 
             if self.angle > 360. {self.angle -= 360.}
             if self.angle < 0. {self.angle += 360.}
+
+
+            // Manage damage (* over complicated function that damage ship -_- *)
+            // ------------------
+            if self.damaged
+            {
+                if self.damaged_timer > 0
+                {
+                    self.damaged_timer -= 1;
+                    self.blink_timer -= 1;
+
+                    // blink
+                    if self.blink_timer <= 0
+                    {
+                        self.blink_timer = BLINK_TIME;
+                        self.visible = !self.visible;
+                    }
+
+                    // Damage action
+                    if self.damaged_timer == DAMAGE_TIME - 1 // niveau de racisme elevé
+                    {
+                        self.can_recharge = false;
+                        self.stunt = true;
+                        self.velocity_x = - self.velocity_x / 2.;
+                        self.velocity_y = - self.velocity_y / 2.;
+                    }
+                    else if self.damaged_timer as f32 > DAMAGE_TIME as f32 * 0.75 {self.fire_on = false;}
+                    else if self.damaged_timer == (DAMAGE_TIME as f32 * 0.75 - 1.) as i32
+                    {
+                        self.stunt = false;
+                        self.velocity_x = 0.;
+                        self.velocity_y = 0.;
+                    }
+                }
+                else
+                {
+                    self.damaged = false;
+                    self.visible = true;
+                    self.damaged_timer = DAMAGE_TIME;
+                    self.blink_timer = BLINK_TIME;
+                    //spark_gif <- gif_reset spark_gif;
+                    self.can_recharge = true;
+                }
+            }
+
+
+            // Blow up
+            // --------------
+            if self.blowing_up
+            {
+                self.blow_timer -= 1;
+
+                if self.blow_timer == BLOW_TIME - 1   // niveau de racisme aussi elevé
+                {
+                    self.can_recharge = false;
+                    self.visible = false;
+                    self.velocity_x = self.velocity_x / 2.;
+                    self.velocity_y = self.velocity_y / 2.
+                }
+                else if self.blow_timer <= 0
+                {
+                    self.to_destroy = true;
+                    // blow_gif <- gif_reset blow_gif;
+
+                    /*
+                    self.blowing_up = false;
+                    self.x = 500.; self.y = 250.; self.angle = 0.; //new_angle <- 0.;
+                    self.velocity_x = 0.; self.velocity_y = 0.;
+                    self.visible =true;
+                    self.blow_timer = BLOW_TIME;
+
+                    self.can_recharge = true; self.energy = SHIP_MAX_ENERGY;
+                    */
+                }
+            }
+
         }
+
 
         pub fn fire(&mut self, texture_creator: &'tc TextureCreator<WindowContext>) -> Option<Laser<'tc>>
         {
-            if self.energy <= 0. {None}
+            if self.energy <= 0. || self.stunt {None}
             else
             {
                 self.mixer.play_audio(&self.laser_sfx).unwrap();
@@ -130,6 +226,25 @@ pub mod ship
                     self.angle))
             }
         }
+
+
+        pub fn damage(&mut self)
+        {
+            if self.damaged || self.blowing_up {return} // Invisibility frames
+
+            self.health -= 1;
+            if self.health >= 1
+            {
+                self.mixer.play_audio(&self.spark_sfx).unwrap();
+                self.damaged = true;
+            }
+            else
+            {
+                self.mixer.play_audio(&self.blow_sfx).unwrap();
+                self.blowing_up = true;
+            }
+        }
+
 
         pub fn get_circle_collider(&self) -> CircleCollider
         {

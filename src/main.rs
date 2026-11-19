@@ -228,6 +228,7 @@ fn main()
         if game_event_state.game_stop {game_running = false};
 
         // Ship
+        // ---------
         ship.fire_on = game_event_state.ship_fire_on;
         ship.rotation_direction = game_event_state.ship_rotation_direction.clone();
         ship.update();
@@ -240,6 +241,22 @@ fn main()
             }
             game_event_state.ship_fire_laser = false;
         }
+
+        // Game over
+        if ship.to_destroy
+        {
+            lasers.clear();
+            asteroids.clear();
+            targets.clear();
+            score_infos.clear();
+
+            *score = 0;
+
+            ship = Ship::new(&texture_creator, &mixer);
+
+            soundtrack.play().unwrap();
+        }
+
 
         // Lasers
         for laser in &mut lasers {laser.update();}
@@ -292,6 +309,15 @@ fn main()
             }
         }
 
+        // Ship & Asteroids
+        for asteroid in & mut asteroids
+        {
+            if collide_circle(ship.get_circle_collider(), asteroid.get_circle_collider())
+            {
+                ship.damage();
+                if ship.blowing_up {soundtrack.stop(0).unwrap();}
+            }
+        }
 
 
         // Draw 
@@ -305,11 +331,15 @@ fn main()
         draw(&mut canvas, &background, FRect{x: 0.0, y: 0.0, w: background.width() as f32, h: background.height() as f32}, None, None);
 
         // Draw Ship
-        draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: SHIP_SIZE, h: SHIP_SIZE}, Some(ship.angle), Some(ship.body_rect));
-        if ship.fire_on 
+        if ship.visible
         {
-            draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: SHIP_SIZE, h: SHIP_SIZE}, Some(ship.angle), Some(ship.fire_rect));
+            draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: SHIP_SIZE, h: SHIP_SIZE}, Some(ship.angle), Some(ship.body_rect));
+            if ship.fire_on
+            {
+                draw(&mut canvas, &ship.sprite_texture, FRect{x: ship.x, y: ship.y, w: SHIP_SIZE, h: SHIP_SIZE}, Some(ship.angle), Some(ship.fire_rect));
+            }
         }
+
         
         // Draw lasers
         for laser in &mut lasers
